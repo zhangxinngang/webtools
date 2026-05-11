@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时间戳转换工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      width: 100%;
+      max-width: 680px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 32px;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+    label:first-of-type { margin-top: 0; }
+    input, select {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: #6366f1; }
+    input::placeholder { color: #475569; }
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .row .field { flex: 1; }
+    button {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    button:hover { background: #4f46e5; }
+    button.secondary {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    button.secondary:hover { background: #475569; }
+    .result {
+      margin-top: 16px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      min-height: 52px;
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-label { color: #64748b; font-size: 0.8rem; }
+    .result-value {
+      color: #a5f3fc;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.88rem;
+    }
+    .current-time {
+      text-align: center;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #94a3b8;
+    }
+    .current-time span { color: #a5f3fc; }
+    .error { color: #f87171; font-size: 0.85rem; }
+    .unit-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .unit-toggle button {
+      flex: 1;
+      padding: 7px;
+      font-size: 0.82rem;
+      background: #0f172a;
+      color: #64748b;
+      border: 1px solid #334155;
+    }
+    .unit-toggle button.active {
+      background: #6366f1;
+      color: #fff;
+      border-color: #6366f1;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>时间戳转换工具</h1>
+
+  <div class="current-time" id="currentTime"></div>
+
+  <!-- 时间戳 → 日期 -->
+  <div class="card">
+    <h2>时间戳 → 日期</h2>
+    <div class="unit-toggle">
+      <button class="active" id="btnSec" onclick="setUnit('s')">秒 (s)</button>
+      <button id="btnMs" onclick="setUnit('ms')">毫秒 (ms)</button>
+    </div>
+    <label>时间戳</label>
+    <div class="row">
+      <div class="field">
+        <input type="number" id="tsInput" placeholder="如：1715000000">
+      </div>
+      <button onclick="tsNow()">当前时间</button>
+      <button onclick="tsToDate()">转换</button>
+    </div>
+    <label>目标时区</label>
+    <select id="tsTimezone"></select>
+    <div class="result" id="tsResult">结果将显示在这里</div>
+  </div>
+
+  <!-- 日期 → 时间戳 -->
+  <div class="card">
+    <h2>日期 → 时间戳</h2>
+    <label>日期时间（本地时间输入）</label>
+    <input type="datetime-local" id="dtInput" step="1">
+    <label>解释为时区</label>
+    <select id="dtTimezone"></select>
+    <div style="margin-top: 14px;">
+      <button onclick="dateToTs()">转换</button>
+    </div>
+    <div class="result" id="dtResult">结果将显示在这里</div>
+  </div>
+</div>
+
+<script>
+  const TIMEZONES = [
+    { label: 'UTC+0  (UTC)', value: 'UTC' },
+    { label: 'UTC+8  (北京/上海/香港)', value: 'Asia/Shanghai' },
+    { label: 'UTC+9  (东京)', value: 'Asia/Tokyo' },
+    { label: 'UTC+5:30 (印度)', value: 'Asia/Kolkata' },
+    { label: 'UTC+3  (莫斯科)', value: 'Europe/Moscow' },
+    { label: 'UTC+1  (柏林/巴黎)', value: 'Europe/Paris' },
+    { label: 'UTC+0  (伦敦)', value: 'Europe/London' },
+    { label: 'UTC-5  (纽约/多伦多)', value: 'America/New_York' },
+    { label: 'UTC-6  (芝加哥)', value: 'America/Chicago' },
+    { label: 'UTC-7  (丹佛)', value: 'America/Denver' },
+    { label: 'UTC-8  (洛杉矶/西雅图)', value: 'America/Los_Angeles' },
+    { label: 'UTC-3  (圣保罗)', value: 'America/Sao_Paulo' },
+    { label: 'UTC+10 (悉尼)', value: 'Australia/Sydney' },
+    { label: 'UTC+12 (奥克兰)', value: 'Pacific/Auckland' },
+    { label: 'UTC-12 (贝克岛)', value: 'Etc/GMT+12' },
+  ];
+
+  let tsUnit = 's';
+
+  function populateTimezones() {
+    const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    [document.getElementById('tsTimezone'), document.getElementById('dtTimezone')].forEach(sel => {
+      sel.innerHTML = '';
+      // Add local timezone first if not already in list
+      const inList = TIMEZONES.some(tz => tz.value === local);
+      if (!inList) {
+        const opt = document.createElement('option');
+        opt.value = local;
+        opt.textContent = `本地时区 (${local})`;
+        sel.appendChild(opt);
+      } else {
+        const opt = document.createElement('option');
+        opt.value = local;
+        opt.textContent = `本地时区 (${local})`;
+        sel.appendChild(opt);
+      }
+      TIMEZONES.forEach(tz => {
+        if (tz.value === local) return;
+        const opt = document.createElement('option');
+        opt.value = tz.value;
+        opt.textContent = tz.label;
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function setUnit(u) {
+    tsUnit = u;
+    document.getElementById('btnSec').classList.toggle('active', u === 's');
+    document.getElementById('btnMs').classList.toggle('active', u === 'ms');
+  }
+
+  function tsNow() {
+    const now = Date.now();
+    document.getElementById('tsInput').value = tsUnit === 's' ? Math.floor(now / 1000) : now;
+  }
+
+  function formatInTz(ms, tz) {
+    try {
+      return new Intl.DateTimeFormat('zh-CN', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+        timeZoneName: 'longOffset'
+      }).format(new Date(ms));
+    } catch {
+      return '无效时区';
+    }
+  }
+
+  function dayOfWeek(ms, tz) {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: tz, weekday: 'long'
+    }).format(new Date(ms));
+  }
+
+  function tsToDate() {
+    const raw = document.getElementById('tsInput').value.trim();
+    const tz = document.getElementById('tsTimezone').value;
+    const result = document.getElementById('tsResult');
+
+    if (!raw) { result.innerHTML = '<span class="error">请输入时间戳</span>'; return; }
+    const num = Number(raw);
+    if (isNaN(num)) { result.innerHTML = '<span class="error">无效的时间戳</span>'; return; }
+
+    const ms = tsUnit === 's' ? num * 1000 : num;
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) { result.innerHTML = '<span class="error">时间戳超出有效范围</span>'; return; }
+
+    const formatted = formatInTz(ms, tz);
+    const utc = formatInTz(ms, 'UTC');
+    const iso = d.toISOString();
+    const week = dayOfWeek(ms, tz);
+
+    result.innerHTML = `
+      <div class="result-row"><span class="result-label">所选时区</span><span class="result-value">${formatted}</span></div>
+      <div class="result-row"><span class="result-label">UTC</span><span class="result-value">${utc}</span></div>
+      <div class="result-row"><span class="result-label">ISO 8601</span><span class="result-value">${iso}</span></div>
+      <div class="result-row"><span class="result-label">星期</span><span class="result-value">${week}</span></div>
+      <div class="result-row"><span class="result-label">Unix (秒)</span><span class="result-value">${Math.floor(ms / 1000)}</span></div>
+      <div class="result-row"><span class="result-label">Unix (毫秒)</span><span class="result-value">${ms}</span></div>
+    `;
+  }
+
+  function dateToTs() {
+    const dtVal = document.getElementById('dtInput').value;
+    const tz = document.getElementById('dtTimezone').value;
+    const result = document.getElementById('dtResult');
+
+    if (!dtVal) { result.innerHTML = '<span class="error">请选择日期时间</span>'; return; }
+
+    // Parse the datetime-local value as if it were in the selected timezone
+    // datetime-local gives us "YYYY-MM-DDTHH:mm:ss" without timezone info
+    // We interpret it in the selected timezone using Temporal-like approach
+    const [datePart, timePart] = dtVal.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const timeSplit = (timePart || '00:00:00').split(':').map(Number);
+    const hour = timeSplit[0] || 0;
+    const minute = timeSplit[1] || 0;
+    const second = timeSplit[2] || 0;
+
+    // Use a reliable method: format a known UTC time and compare
+    // We find the UTC ms that, when displayed in `tz`, shows our target local time
+    // Approximation: treat as UTC, get offset, subtract offset
+    const approxUtcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+    const approxDate = new Date(approxUtcMs);
+
+    // Get the offset in the target timezone for this approximate time
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).formatToParts(approxDate);
+
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    const tzYear = parseInt(p.year), tzMonth = parseInt(p.month), tzDay = parseInt(p.day);
+    const tzHour = parseInt(p.hour) % 24, tzMinute = parseInt(p.minute), tzSecond = parseInt(p.second);
+
+    const tzDisplayMs = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, tzSecond);
+    const offsetMs = approxUtcMs - tzDisplayMs;
+    const actualUtcMs = approxUtcMs + offsetMs;
+
+    const d = new Date(actualUtcMs);
+    if (isNaN(d.getTime())) { result.innerHTML = '<span class="error">无效的日期时间</span>'; return; }
+
+    const unixSec = Math.floor(actualUtcMs / 1000);
+    const utcFormatted = formatInTz(actualUtcMs, 'UTC');
+    const tzFormatted = formatInTz(actualUtcMs, tz);
+    const iso = d.toISOString();
+
+    result.innerHTML = `
+      <div class="result-row"><span class="result-label">Unix 时间戳 (秒)</span><span class="result-value">${unixSec}</span></div>
+      <div class="result-row"><span class="result-label">Unix 时间戳 (毫秒)</span><span class="result-value">${actualUtcMs}</span></div>
+      <div class="result-row"><span class="result-label">所选时区</span><span class="result-value">${tzFormatted}</span></div>
+      <div class="result-row"><span class="result-label">UTC</span><span class="result-value">${utcFormatted}</span></div>
+      <div class="result-row"><span class="result-label">ISO 8601</span><span class="result-value">${iso}</span></div>
+    `;
+  }
+
+  function updateClock() {
+    const now = Date.now();
+    const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fmt = formatInTz(now, local);
+    document.getElementById('currentTime').innerHTML =
+      `当前时间：<span>${fmt}</span> &nbsp;|&nbsp; Unix：<span>${Math.floor(now / 1000)}</span>`;
+  }
+
+  populateTimezones();
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Default datetime-local to now
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('dtInput').value =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+</script>
+</body>
+</html>

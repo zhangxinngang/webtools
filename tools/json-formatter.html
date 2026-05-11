@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON 格式化工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+      margin-top: 8px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 16px;
+      width: 100%;
+      max-width: 1200px;
+    }
+    button {
+      background: #334155;
+      color: #cbd5e1;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    button:hover { background: #475569; color: #f1f5f9; }
+    button.primary { background: #6366f1; color: #fff; }
+    button.primary:hover { background: #4f46e5; }
+    button.success { background: #14532d; color: #86efac; }
+    button.danger-soft { background: #7f1d1d; color: #fca5a5; }
+    button.danger-soft:hover { background: #991b1b; }
+
+    .indent-toggle {
+      display: flex;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .indent-toggle button {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      border-right: 1px solid #334155;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+    .indent-toggle button:last-child { border-right: none; }
+    .indent-toggle button.active { background: #6366f1; color: #fff; }
+    .indent-toggle button:hover:not(.active) { background: #1e293b; color: #cbd5e1; }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 1200px;
+      flex: 1;
+    }
+    @media (max-width: 700px) {
+      .main { grid-template-columns: 1fr; }
+    }
+    .pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 500px;
+    }
+    .pane-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .pane-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+    .pane-actions { display: flex; gap: 6px; }
+    .pane-actions button { padding: 5px 12px; font-size: 0.78rem; }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
+      color: #f1f5f9;
+      font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+      min-height: 480px;
+    }
+    textarea:focus { border-color: #6366f1; }
+    textarea::placeholder { color: #334155; }
+
+    .output-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 480px;
+    }
+    .output-box {
+      position: absolute;
+      inset: 0;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      overflow: auto;
+      white-space: pre;
+      word-break: normal;
+      tab-size: 2;
+    }
+    .output-box.error-state { border-color: #ef4444; }
+
+    /* syntax highlight */
+    .jk  { color: #c084fc; } /* key */
+    .js  { color: #86efac; } /* string value */
+    .jn  { color: #f9a8d4; } /* number */
+    .jb  { color: #fb923c; } /* boolean */
+    .jl  { color: #64748b; } /* null */
+    .jp  { color: #94a3b8; } /* punctuation */
+    .je  { color: #f87171; } /* error */
+
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: #64748b;
+      width: 100%;
+      max-width: 1200px;
+    }
+    .status-bar span { color: #94a3b8; }
+    .status-bar .ok { color: #86efac; }
+    .status-bar .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>JSON 格式化工具</h1>
+
+  <div class="toolbar">
+    <button class="primary" onclick="format()">格式化</button>
+    <button onclick="minify()">压缩</button>
+    <button onclick="sortKeys()">键名排序</button>
+    <button onclick="escapeJson()">转义字符串</button>
+    <button onclick="unescapeJson()">反转义字符串</button>
+    <div class="indent-toggle">
+      <button id="ind2" class="active" onclick="setIndent(2)">2 空格</button>
+      <button id="ind4" onclick="setIndent(4)">4 空格</button>
+      <button id="indT" onclick="setIndent('tab')">Tab</button>
+    </div>
+    <button class="danger-soft" onclick="clearAll()">清空</button>
+  </div>
+
+  <div class="main">
+    <div class="pane">
+      <div class="pane-header">
+        <span class="pane-label">输入</span>
+        <div class="pane-actions">
+          <button onclick="loadSample()">示例</button>
+          <button onclick="pasteInput()">粘贴</button>
+        </div>
+      </div>
+      <textarea id="input" placeholder='粘贴 JSON 内容…' oninput="onInput()"></textarea>
+    </div>
+
+    <div class="pane">
+      <div class="pane-header">
+        <span class="pane-label">输出</span>
+        <div class="pane-actions">
+          <button id="copyBtn" onclick="copyOutput()">复制</button>
+          <button onclick="useAsInput()">→ 用作输入</button>
+        </div>
+      </div>
+      <div class="output-wrap">
+        <div class="output-box" id="output">格式化结果将显示在这里</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar"></div>
+
+<script>
+  let indentVal = 2;
+  let lastParsed = null;
+  let outputText = '';
+
+  function setIndent(v) {
+    indentVal = v;
+    ['ind2','ind4','indT'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (v === 2) document.getElementById('ind2').classList.add('active');
+    else if (v === 4) document.getElementById('ind4').classList.add('active');
+    else document.getElementById('indT').classList.add('active');
+    if (lastParsed !== null) renderFormatted(lastParsed);
+  }
+
+  function getIndent() { return indentVal === 'tab' ? '\t' : indentVal; }
+
+  function onInput() {
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) { clearOutput(); return; }
+    tryParse(raw);
+  }
+
+  function tryParse(raw) {
+    try {
+      lastParsed = JSON.parse(raw);
+      renderFormatted(lastParsed);
+      return true;
+    } catch (e) {
+      lastParsed = null;
+      renderError(e.message, raw);
+      return false;
+    }
+  }
+
+  function format() {
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) return;
+    tryParse(raw);
+  }
+
+  function minify() {
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) return;
+    try {
+      const obj = JSON.parse(raw);
+      const minified = JSON.stringify(obj);
+      outputText = minified;
+      document.getElementById('output').className = 'output-box';
+      document.getElementById('output').innerHTML = highlight(minified);
+      setStatus(obj, minified);
+    } catch(e) { renderError(e.message, raw); }
+  }
+
+  function sortKeys() {
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) return;
+    try {
+      const obj = JSON.parse(raw);
+      const sorted = sortDeep(obj);
+      lastParsed = sorted;
+      renderFormatted(sorted);
+    } catch(e) { renderError(e.message, raw); }
+  }
+
+  function sortDeep(val) {
+    if (Array.isArray(val)) return val.map(sortDeep);
+    if (val !== null && typeof val === 'object') {
+      const sorted = {};
+      Object.keys(val).sort().forEach(k => { sorted[k] = sortDeep(val[k]); });
+      return sorted;
+    }
+    return val;
+  }
+
+  function escapeJson() {
+    const raw = document.getElementById('input').value;
+    if (!raw) return;
+    const escaped = JSON.stringify(raw);
+    outputText = escaped;
+    document.getElementById('output').className = 'output-box';
+    document.getElementById('output').innerHTML = highlight(escaped);
+    updateStatusRaw(`已转义为 JSON 字符串（${escaped.length} 字符）`);
+  }
+
+  function unescapeJson() {
+    const raw = document.getElementById('input').value.trim();
+    if (!raw) return;
+    try {
+      const unescaped = JSON.parse(raw);
+      if (typeof unescaped !== 'string') throw new Error('输入不是 JSON 字符串');
+      outputText = unescaped;
+      document.getElementById('output').className = 'output-box';
+      document.getElementById('output').textContent = unescaped;
+      updateStatusRaw(`已反转义（${unescaped.length} 字符）`);
+    } catch(e) {
+      renderError(e.message, raw);
+    }
+  }
+
+  function renderFormatted(obj) {
+    const formatted = JSON.stringify(obj, null, getIndent());
+    outputText = formatted;
+    document.getElementById('output').className = 'output-box';
+    document.getElementById('output').innerHTML = highlight(formatted);
+    setStatus(obj, formatted);
+  }
+
+  function renderError(msg, raw) {
+    const box = document.getElementById('output');
+    box.className = 'output-box error-state';
+    // Try to point to error location
+    const lineMatch = msg.match(/position (\d+)/i);
+    let hint = '';
+    if (lineMatch) {
+      const pos = parseInt(lineMatch[1]);
+      const lines = raw.slice(0, pos).split('\n');
+      hint = ` (行 ${lines.length}，列 ${lines[lines.length-1].length + 1})`;
+    }
+    box.innerHTML = `<span class="je">✗ JSON 解析错误${hint}\n${escHtml(msg)}</span>`;
+    outputText = '';
+    document.getElementById('statusBar').innerHTML = `<span class="err">✗ 无效 JSON</span>`;
+  }
+
+  function clearOutput() {
+    lastParsed = null;
+    outputText = '';
+    document.getElementById('output').className = 'output-box';
+    document.getElementById('output').textContent = '格式化结果将显示在这里';
+    document.getElementById('statusBar').innerHTML = '';
+  }
+
+  function clearAll() {
+    document.getElementById('input').value = '';
+    clearOutput();
+  }
+
+  function useAsInput() {
+    if (!outputText) return;
+    document.getElementById('input').value = outputText;
+    onInput();
+  }
+
+  async function pasteInput() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('input').value = text;
+      onInput();
+    } catch { document.getElementById('input').focus(); }
+  }
+
+  function copyOutput() {
+    if (!outputText) return;
+    navigator.clipboard.writeText(outputText).then(() => {
+      const btn = document.getElementById('copyBtn');
+      const orig = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('success');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('success'); }, 1500);
+    });
+  }
+
+  function setStatus(obj, str) {
+    const lines = str.split('\n').length;
+    const bytes = new TextEncoder().encode(str).length;
+    const keys = countKeys(obj);
+    document.getElementById('statusBar').innerHTML =
+      `<span class="ok">✓ 有效 JSON</span>` +
+      `<span>行数 <span>${lines}</span></span>` +
+      `<span>字节 <span>${bytes}</span></span>` +
+      `<span>键总数 <span>${keys}</span></span>` +
+      `<span>类型 <span>${Array.isArray(obj) ? 'Array' : typeof obj === 'object' && obj !== null ? 'Object' : typeof obj}</span></span>`;
+  }
+
+  function updateStatusRaw(msg) {
+    document.getElementById('statusBar').innerHTML = `<span class="ok">✓ ${msg}</span>`;
+  }
+
+  function countKeys(val, count = 0) {
+    if (Array.isArray(val)) { val.forEach(v => { count = countKeys(v, count); }); }
+    else if (val !== null && typeof val === 'object') {
+      count += Object.keys(val).length;
+      Object.values(val).forEach(v => { count = countKeys(v, count); });
+    }
+    return count;
+  }
+
+  // Syntax highlighter
+  function highlight(json) {
+    return json
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(
+        /("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?|[{}\[\],:])/g,
+        match => {
+          if (/^"/.test(match)) {
+            if (/:$/.test(match)) return `<span class="jk">${match}</span>`;
+            return `<span class="js">${match}</span>`;
+          }
+          if (/true|false/.test(match)) return `<span class="jb">${match}</span>`;
+          if (/null/.test(match)) return `<span class="jl">${match}</span>`;
+          if (/[{}\[\]]/.test(match)) return `<span class="jp">${match}</span>`;
+          if (/[,:]/.test(match)) return `<span class="jp">${match}</span>`;
+          return `<span class="jn">${match}</span>`;
+        }
+      );
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function loadSample() {
+    document.getElementById('input').value = JSON.stringify({
+      "name": "工具箱",
+      "version": "1.0.0",
+      "tools": ["时间戳转换", "URL编解码", "密码生成器", "JSON格式化"],
+      "config": {
+        "theme": "dark",
+        "language": "zh-CN",
+        "autoFormat": true,
+        "maxHistory": 100
+      },
+      "stats": {
+        "users": 42,
+        "requests": 99999,
+        "uptime": null
+      },
+      "tags": ["dev", "utility", "offline"]
+    });
+    onInput();
+  }
+</script>
+</body>
+</html>

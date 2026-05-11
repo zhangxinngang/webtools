@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Base64 编解码工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+    .topbar {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .topbar a {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.15s;
+    }
+    .topbar a:hover { color: #a5b4fc; }
+    .topbar span { color: #334155; }
+    h1 {
+      flex: 1;
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+    }
+    .mode-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 9px;
+      padding: 4px;
+    }
+    .mode-bar button {
+      flex: 1;
+      padding: 9px 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      background: transparent;
+      color: #64748b;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-bar button.active { background: #6366f1; color: #fff; }
+    .mode-bar button:hover:not(.active) { color: #cbd5e1; background: #1e293b; }
+
+    .main {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pane {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .pane-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .pane-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+    .pane-actions { display: flex; gap: 6px; }
+    textarea {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #f1f5f9;
+      font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+      min-height: 120px;
+    }
+    textarea:focus { border-color: #6366f1; }
+    textarea::placeholder { color: #334155; }
+    textarea.result-area { color: #a5f3fc; min-height: 120px; }
+    textarea.error-area { color: #f87171; border-color: #7f1d1d; }
+
+    .arrow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .arrow-btn {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 28px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .arrow-btn:hover { background: #4f46e5; }
+
+    button.sm {
+      background: #334155;
+      color: #cbd5e1;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button.sm:hover { background: #475569; }
+    button.sm.copied { background: #14532d; color: #86efac; }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+    .stats span { color: #94a3b8; }
+    .stats .ok { color: #86efac; }
+    .stats .err { color: #f87171; }
+
+    /* 图片区 */
+    .image-section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .image-section h2 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .drop-zone {
+      border: 2px dashed #334155;
+      border-radius: 10px;
+      padding: 32px;
+      text-align: center;
+      color: #475569;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #6366f1;
+      background: #1e1b4b;
+      color: #a5b4fc;
+    }
+    .drop-zone input { display: none; }
+    .img-preview {
+      display: none;
+      gap: 16px;
+      margin-top: 14px;
+      align-items: flex-start;
+    }
+    .img-preview img {
+      max-width: 200px;
+      max-height: 160px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      object-fit: contain;
+      background: #0f172a;
+    }
+    .img-meta { flex: 1; font-size: 0.82rem; color: #64748b; line-height: 2; }
+    .img-meta span { color: #94a3b8; }
+    .img-b64 {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #a5f3fc;
+      font-family: monospace;
+      font-size: 0.78rem;
+      resize: vertical;
+      outline: none;
+      min-height: 80px;
+      margin-top: 10px;
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #334155;
+      font-size: 0.75rem;
+      margin: 16px 0 12px;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1e293b; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="../index.html">← 工具箱</a>
+  <span>/</span>
+  <h1>Base64 编解码工具</h1>
+  <div style="width:80px;"></div>
+</div>
+
+<div style="width:100%;max-width:900px;">
+  <div class="mode-bar">
+    <button class="active" id="btnStd" onclick="setVariant('std')">标准 Base64</button>
+    <button id="btnUrl" onclick="setVariant('url')">URL-Safe Base64</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- 文本编解码 -->
+  <div class="pane">
+    <div class="pane-header">
+      <span class="pane-label">原始文本</span>
+      <div class="pane-actions">
+        <button class="sm" onclick="pasteText()">粘贴</button>
+        <button class="sm" onclick="clearText()">清空</button>
+      </div>
+    </div>
+    <textarea id="rawInput" placeholder="输入要编码的文本…" oninput="onRawInput()"></textarea>
+
+    <div class="arrow-row" style="margin:14px 0;">
+      <button class="arrow-btn" onclick="encode()">编码 →</button>
+      <button class="arrow-btn" style="background:#334155;color:#cbd5e1;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'" onclick="swap()">↕ 交换</button>
+      <button class="arrow-btn" style="background:#0f172a;border:1px solid #334155;color:#94a3b8;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'" onclick="decode()">← 解码</button>
+    </div>
+
+    <div class="pane-header">
+      <span class="pane-label">Base64</span>
+      <div class="pane-actions">
+        <button class="sm" id="copyTextBtn" onclick="copyResult()">复制</button>
+        <button class="sm" onclick="pasteB64()">粘贴到此解码</button>
+      </div>
+    </div>
+    <textarea id="b64Output" class="result-area" placeholder="Base64 结果将显示在这里…" oninput="onB64Input()"></textarea>
+    <div class="stats" id="textStats"></div>
+  </div>
+
+  <!-- 图片 Base64 -->
+  <div class="image-section">
+    <h2>图片 → Base64 Data URL</h2>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <input type="file" id="fileInput" accept="image/*" onchange="onFileChange(event)">
+      点击选择图片，或拖拽图片到此处
+    </div>
+    <div class="img-preview" id="imgPreview">
+      <img id="previewImg" src="" alt="预览">
+      <div class="img-meta" id="imgMeta"></div>
+    </div>
+    <div id="imgB64Wrap" style="display:none;">
+      <div class="pane-header" style="margin-top:12px;">
+        <span class="pane-label">Data URL</span>
+        <div class="pane-actions">
+          <button class="sm" id="copyImgBtn" onclick="copyImgB64()">复制</button>
+          <button class="sm" onclick="copyImgB64Pure()">仅复制 Base64</button>
+        </div>
+      </div>
+      <textarea class="img-b64" id="imgB64" readonly></textarea>
+    </div>
+
+    <div class="divider">Base64 → 图片</div>
+    <div class="pane-header">
+      <span class="pane-label">粘贴 Data URL 或纯 Base64（图片）</span>
+    </div>
+    <textarea id="b64ToImgInput" placeholder="data:image/png;base64,... 或纯 Base64 字符串" style="min-height:80px;width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px 14px;color:#f1f5f9;font-family:monospace;font-size:0.82rem;resize:vertical;outline:none;" oninput="b64ToImg()"></textarea>
+    <div id="b64ImgPreviewWrap" style="display:none;margin-top:12px;">
+      <img id="b64ImgPreview" src="" alt="预览" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid #334155;display:block;">
+    </div>
+    <div id="b64ImgError" style="color:#f87171;font-size:0.82rem;margin-top:8px;display:none;"></div>
+  </div>
+
+</div>
+
+<script>
+  let variant = 'std';
+
+  function setVariant(v) {
+    variant = v;
+    document.getElementById('btnStd').classList.toggle('active', v === 'std');
+    document.getElementById('btnUrl').classList.toggle('active', v === 'url');
+    // re-encode if there's input
+    if (document.getElementById('rawInput').value) encode();
+  }
+
+  function toB64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    let b64 = btoa(binary);
+    if (variant === 'url') b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return b64;
+  }
+
+  function fromB64(b64) {
+    let s = b64.trim();
+    if (variant === 'url') {
+      s = s.replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) s += '=';
+    }
+    const binary = atob(s);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function encode() {
+    const raw = document.getElementById('rawInput').value;
+    if (!raw) { document.getElementById('b64Output').value = ''; setStats('', ''); return; }
+    try {
+      const result = toB64(raw);
+      const out = document.getElementById('b64Output');
+      out.value = result;
+      out.className = 'result-area';
+      setStats(raw, result);
+    } catch(e) {
+      showB64Error('编码失败：' + e.message);
+    }
+  }
+
+  function decode() {
+    const b64 = document.getElementById('b64Output').value.trim();
+    if (!b64) return;
+    try {
+      const result = fromB64(b64);
+      document.getElementById('rawInput').value = result;
+      document.getElementById('b64Output').className = 'result-area';
+      setStats(result, b64);
+    } catch(e) {
+      showB64Error('解码失败：输入不是有效的 Base64');
+    }
+  }
+
+  function swap() {
+    const raw = document.getElementById('rawInput').value;
+    const b64 = document.getElementById('b64Output').value;
+    document.getElementById('rawInput').value = b64;
+    document.getElementById('b64Output').value = raw;
+    document.getElementById('b64Output').className = 'result-area';
+    setStats(b64, raw);
+  }
+
+  function onRawInput() { encode(); }
+
+  function onB64Input() {
+    // live decode preview
+    const b64 = document.getElementById('b64Output').value.trim();
+    if (!b64) { document.getElementById('rawInput').value = ''; setStats('',''); return; }
+    try {
+      const result = fromB64(b64);
+      document.getElementById('rawInput').value = result;
+      document.getElementById('b64Output').className = 'result-area';
+      setStats(result, b64);
+    } catch {
+      document.getElementById('b64Output').className = 'result-area error-area';
+      setStatsError('无效的 Base64');
+    }
+  }
+
+  function showB64Error(msg) {
+    const out = document.getElementById('b64Output');
+    out.value = msg;
+    out.className = 'result-area error-area';
+  }
+
+  function setStats(raw, b64) {
+    const ratio = raw.length ? ((b64.length / raw.length) * 100).toFixed(0) : 0;
+    document.getElementById('textStats').innerHTML =
+      `<span class="ok">✓</span>` +
+      `<span>原始 <span>${new TextEncoder().encode(raw).length}</span> 字节</span>` +
+      `<span>Base64 <span>${b64.length}</span> 字符</span>` +
+      `<span>膨胀率 <span>${ratio}%</span></span>`;
+  }
+
+  function setStatsError(msg) {
+    document.getElementById('textStats').innerHTML = `<span class="err">✗ ${msg}</span>`;
+  }
+
+  function clearText() {
+    document.getElementById('rawInput').value = '';
+    document.getElementById('b64Output').value = '';
+    document.getElementById('b64Output').className = 'result-area';
+    document.getElementById('textStats').innerHTML = '';
+  }
+
+  async function pasteText() {
+    try {
+      const t = await navigator.clipboard.readText();
+      document.getElementById('rawInput').value = t;
+      encode();
+    } catch { document.getElementById('rawInput').focus(); }
+  }
+
+  async function pasteB64() {
+    try {
+      const t = await navigator.clipboard.readText();
+      document.getElementById('b64Output').value = t;
+      onB64Input();
+    } catch { document.getElementById('b64Output').focus(); }
+  }
+
+  function copyResult() {
+    const val = document.getElementById('b64Output').value;
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+      const btn = document.getElementById('copyTextBtn');
+      btn.textContent = '已复制 ✓'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // Image handling
+  function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+  function onDragLeave() { document.getElementById('dropZone').classList.remove('drag-over'); }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) processImage(file);
+  }
+  function onFileChange(e) {
+    const file = e.target.files[0];
+    if (file) processImage(file);
+  }
+
+  function processImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const b64 = dataUrl.split(',')[1];
+      document.getElementById('previewImg').src = dataUrl;
+      document.getElementById('imgPreview').style.display = 'flex';
+      document.getElementById('imgMeta').innerHTML =
+        `文件名 <span>${file.name}</span><br>` +
+        `类型 <span>${file.type}</span><br>` +
+        `大小 <span>${(file.size / 1024).toFixed(1)} KB</span><br>` +
+        `Base64 长度 <span>${b64.length} 字符</span>`;
+      document.getElementById('imgB64').value = dataUrl;
+      document.getElementById('imgB64Wrap').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function copyImgB64() {
+    const val = document.getElementById('imgB64').value;
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+      const btn = document.getElementById('copyImgBtn');
+      btn.textContent = '已复制 ✓'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  function copyImgB64Pure() {
+    const val = document.getElementById('imgB64').value;
+    if (!val) return;
+    const pure = val.includes(',') ? val.split(',')[1] : val;
+    navigator.clipboard.writeText(pure);
+  }
+
+  function b64ToImg() {
+    const input = document.getElementById('b64ToImgInput').value.trim();
+    const errEl = document.getElementById('b64ImgError');
+    const wrap = document.getElementById('b64ImgPreviewWrap');
+    if (!input) { wrap.style.display = 'none'; errEl.style.display = 'none'; return; }
+    try {
+      let src = input;
+      if (!input.startsWith('data:')) {
+        // try to detect image type from magic bytes after decoding
+        src = 'data:image/png;base64,' + input.replace(/\s/g, '');
+      }
+      const img = document.getElementById('b64ImgPreview');
+      img.onerror = () => {
+        wrap.style.display = 'none';
+        errEl.textContent = '无法渲染图片，请确认是有效的图片 Base64';
+        errEl.style.display = 'block';
+      };
+      img.onload = () => { wrap.style.display = 'block'; errEl.style.display = 'none'; };
+      img.src = src;
+    } catch(e) {
+      errEl.textContent = '解析失败：' + e.message;
+      errEl.style.display = 'block';
+    }
+  }
+</script>
+</body>
+</html>
