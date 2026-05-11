@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>科学计算器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container { width: 100%; max-width: 420px; }
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+
+    .calc {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    /* 显示屏 */
+    .display {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .expr {
+      font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 0.82rem;
+      color: #475569;
+      word-break: break-all;
+      text-align: right;
+      min-height: 18px;
+      max-height: 40px;
+      overflow: hidden;
+    }
+    .result {
+      font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+      font-size: 2rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      word-break: break-all;
+      text-align: right;
+      line-height: 1.2;
+    }
+    .result.error { font-size: 1rem; color: #f87171; }
+
+    /* 角度/弧度切换 */
+    .mode-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .mode-btn {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .mode-btn:hover:not(.active) { border-color: #6366f1; color: #a5b4fc; }
+
+    /* 按钮网格 */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    button.key {
+      height: 52px;
+      border: none;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.08s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.key:active { transform: scale(0.94); }
+
+    /* 颜色分类 */
+    button.key.num {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
+    }
+    button.key.num:hover { background: #293548; border-color: #475569; }
+
+    button.key.op {
+      background: #1e1b4b;
+      border: 1px solid #3730a3;
+      color: #a5b4fc;
+    }
+    button.key.op:hover { background: #312e81; }
+
+    button.key.fn {
+      background: #172554;
+      border: 1px solid #1d4ed8;
+      color: #93c5fd;
+      font-size: 0.78rem;
+    }
+    button.key.fn:hover { background: #1e3a8a; }
+
+    button.key.eq {
+      background: #6366f1;
+      border: 1px solid #6366f1;
+      color: #fff;
+    }
+    button.key.eq:hover { background: #4f46e5; }
+
+    button.key.clr {
+      background: #7f1d1d;
+      border: 1px solid #991b1b;
+      color: #fca5a5;
+    }
+    button.key.clr:hover { background: #991b1b; }
+
+    button.key.del {
+      background: #334155;
+      border: 1px solid #475569;
+      color: #cbd5e1;
+    }
+    button.key.del:hover { background: #475569; }
+
+    /* 历史记录 */
+    .history-wrap {
+      margin-top: 16px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .history-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+    }
+    .history-clear {
+      background: transparent;
+      border: none;
+      color: #475569;
+      font-size: 0.72rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .history-clear:hover { color: #f87171; }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      padding: 4px 0;
+      border-bottom: 1px solid #1e293b;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover .h-result { color: #a5b4fc; }
+    .h-expr {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #475569;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 55%;
+    }
+    .h-result {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .history-empty { font-size: 0.78rem; color: #334155; text-align: center; padding: 8px 0; }
+
+  </style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:16px;left:16px;font-size:0.82rem;color:#475569;text-decoration:none;background:#1e293b;border:1px solid #334155;border-radius:7px;padding:6px 12px;transition:color 0.15s,border-color 0.15s;z-index:999;" onmouseover="this.style.color='#a5b4fc';this.style.borderColor='#6366f1'" onmouseout="this.style.color='#475569';this.style.borderColor='#334155'">← 工具箱</a>
+<div class="container">
+  <h1>科学计算器</h1>
+
+  <div class="calc">
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <div class="mode-row">
+      <button class="mode-btn active" id="modeDeg" onclick="setMode('deg')">DEG</button>
+      <button class="mode-btn" id="modeRad" onclick="setMode('rad')">RAD</button>
+    </div>
+
+    <div class="grid">
+      <!-- Row 1: 科学函数 -->
+      <button class="key fn" onclick="inputFn('sin(')">sin</button>
+      <button class="key fn" onclick="inputFn('cos(')">cos</button>
+      <button class="key fn" onclick="inputFn('tan(')">tan</button>
+      <button class="key fn" onclick="inputFn('log(')">log</button>
+      <button class="key fn" onclick="inputFn('ln(')">ln</button>
+
+      <!-- Row 2 -->
+      <button class="key fn" onclick="inputFn('asin(')">asin</button>
+      <button class="key fn" onclick="inputFn('acos(')">acos</button>
+      <button class="key fn" onclick="inputFn('atan(')">atan</button>
+      <button class="key fn" onclick="inputFn('log2(')">log₂</button>
+      <button class="key fn" onclick="inputFn('sqrt(')">√</button>
+
+      <!-- Row 3 -->
+      <button class="key fn" onclick="inputFn('(')"> ( </button>
+      <button class="key fn" onclick="inputFn(')')"> ) </button>
+      <button class="key fn" onclick="inputFn('^')">xʸ</button>
+      <button class="key fn" onclick="inputFn(' mod ')">mod</button>
+      <button class="key fn" onclick="inputFn('π')">π</button>
+
+      <!-- Row 4: 数字 + 运算符 -->
+      <button class="key clr" onclick="clearAll()">AC</button>
+      <button class="key del" onclick="delChar()">⌫</button>
+      <button class="key fn" onclick="inputFn('e')">e</button>
+      <button class="key fn" onclick="negate()">+/−</button>
+      <button class="key op" onclick="inputFn('/')">÷</button>
+
+      <!-- Row 5 -->
+      <button class="key num" onclick="inputChar('7')">7</button>
+      <button class="key num" onclick="inputChar('8')">8</button>
+      <button class="key num" onclick="inputChar('9')">9</button>
+      <button class="key op" onclick="inputFn('*')">×</button>
+      <button class="key fn" onclick="inputFn('!')">n!</button>
+
+      <!-- Row 6 -->
+      <button class="key num" onclick="inputChar('4')">4</button>
+      <button class="key num" onclick="inputChar('5')">5</button>
+      <button class="key num" onclick="inputChar('6')">6</button>
+      <button class="key op" onclick="inputFn('-')">−</button>
+      <button class="key fn" onclick="inputFn('1/x')">1/x</button>
+
+      <!-- Row 7 -->
+      <button class="key num" onclick="inputChar('1')">1</button>
+      <button class="key num" onclick="inputChar('2')">2</button>
+      <button class="key num" onclick="inputChar('3')">3</button>
+      <button class="key op" onclick="inputFn('+')">+</button>
+      <button class="key fn" onclick="inputFn('x²')">x²</button>
+
+      <!-- Row 8 -->
+      <button class="key num" style="grid-column: span 2;" onclick="inputChar('0')">0</button>
+      <button class="key num" onclick="inputChar('.')">.</button>
+      <button class="key op" onclick="inputFn('ans')">ANS</button>
+      <button class="key eq" onclick="calculate()">=</button>
+    </div>
+  </div>
+
+  <div class="history-wrap">
+    <div class="history-header">
+      <span class="history-label">历史记录</span>
+      <button class="history-clear" onclick="clearHistory()">清空</button>
+    </div>
+    <div id="historyList">
+      <div class="history-empty">暂无记录</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let expr = '';
+  let lastAnswer = null;
+  let isDeg = true;
+  let history = [];
+
+  function setMode(m) {
+    isDeg = m === 'deg';
+    document.getElementById('modeDeg').classList.toggle('active', isDeg);
+    document.getElementById('modeRad').classList.toggle('active', !isDeg);
+    if (expr) preview();
+  }
+
+  function setExpr(s) {
+    expr = s;
+    document.getElementById('expr').textContent = expr;
+  }
+
+  function setResult(s, isError) {
+    const el = document.getElementById('result');
+    el.textContent = s;
+    el.className = isError ? 'result error' : 'result';
+  }
+
+  function inputChar(c) {
+    setExpr(expr + c);
+    preview();
+  }
+
+  function inputFn(token) {
+    switch (token) {
+      case 'π':    setExpr(expr + 'π'); break;
+      case 'e':    setExpr(expr + 'e'); break;
+      case '^':    setExpr(expr + '^'); break;
+      case ' mod ': setExpr(expr + ' mod '); break;
+      case '!':    setExpr(expr + '!'); break;
+      case '1/x':  setExpr('1/(' + (expr || '0') + ')'); break;
+      case 'x²':   setExpr('(' + (expr || '0') + ')^2'); break;
+      case 'ans':
+        if (lastAnswer !== null) setExpr(expr + String(lastAnswer));
+        return;
+      default:     setExpr(expr + token);
+    }
+    preview();
+  }
+
+  function negate() {
+    if (!expr) return;
+    setExpr('(-(' + expr + '))');
+    preview();
+  }
+
+  function delChar() {
+    if (!expr) return;
+    setExpr(expr.slice(0, -1));
+    if (expr) preview(); else setResult('0');
+  }
+
+  function clearAll() {
+    setExpr('');
+    setResult('0');
+  }
+
+  function toRad(deg) { return deg * Math.PI / 180; }
+
+  function factorial(n) {
+    n = Math.floor(n);
+    if (n < 0 || n > 170) return NaN;
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  }
+
+  function parseAndEval(raw) {
+    // Replace display tokens with JS equivalents
+    let s = raw
+      .replace(/π/g, '(Math.PI)')
+      .replace(/\be\b/g, '(Math.E)')
+      .replace(/\^/g, '**')
+      .replace(/\bmod\b/g, '%');
+
+    // trig functions (angle conversion if deg mode)
+    if (isDeg) {
+      s = s
+        .replace(/\bsin\(/g, 'Math.sin(__toRad(')
+        .replace(/\bcos\(/g, 'Math.cos(__toRad(')
+        .replace(/\btan\(/g, 'Math.tan(__toRad(')
+        .replace(/\basin\(/g, '(__toDeg(Math.asin(')
+        .replace(/\bacos\(/g, '(__toDeg(Math.acos(')
+        .replace(/\batan\(/g, '(__toDeg(Math.atan(');
+      // close extra parens for deg-wrapped functions
+      s = s
+        .replace(/Math\.sin\(__toRad\(([^)]*)\)/g, m => m + ')')
+        .replace(/Math\.cos\(__toRad\(([^)]*)\)/g, m => m + ')')
+        .replace(/Math\.tan\(__toRad\(([^)]*)\)/g, m => m + ')')
+        .replace(/__toDeg\(Math\.asin\(([^)]*)\)/g, m => m + ')')
+        .replace(/__toDeg\(Math\.acos\(([^)]*)\)/g, m => m + ')')
+        .replace(/__toDeg\(Math\.atan\(([^)]*)\)/g, m => m + ')');
+    } else {
+      s = s
+        .replace(/\bsin\(/g, 'Math.sin(')
+        .replace(/\bcos\(/g, 'Math.cos(')
+        .replace(/\btan\(/g, 'Math.tan(')
+        .replace(/\basin\(/g, 'Math.asin(')
+        .replace(/\bacos\(/g, 'Math.acos(')
+        .replace(/\batan\(/g, 'Math.atan(');
+    }
+
+    s = s
+      .replace(/\bsqrt\(/g, 'Math.sqrt(')
+      .replace(/\bln\(/g, 'Math.log(')
+      .replace(/\blog2\(/g, 'Math.log2(')
+      .replace(/\blog\(/g, 'Math.log10(');
+
+    // factorial: number!
+    s = s.replace(/(\d+\.?\d*)!/g, (_, n) => `__fact(${n})`);
+
+    // Safety: only allow safe characters
+    if (/[a-zA-Z_$]/.test(s.replace(/Math\.(sin|cos|tan|asin|acos|atan|sqrt|log|log2|log10|PI|E)\b/g, '')
+      .replace(/__toRad\b/g, '').replace(/__toDeg\b/g, '').replace(/__fact\b/g, ''))) {
+      throw new Error('非法字符');
+    }
+
+    const fn = new Function(
+      '__toRad', '__toDeg', '__fact',
+      `"use strict"; return (${s});`
+    );
+    return fn(toRad, (r) => r * 180 / Math.PI, factorial);
+  }
+
+  function formatNum(n) {
+    if (!isFinite(n)) return String(n);
+    // Use toPrecision to avoid floating point noise, then clean up
+    if (Math.abs(n) > 1e15 || (Math.abs(n) < 1e-10 && n !== 0)) {
+      return n.toExponential(8).replace(/\.?0+e/, 'e');
+    }
+    let s = parseFloat(n.toPrecision(12)).toString();
+    return s;
+  }
+
+  function preview() {
+    if (!expr) return;
+    try {
+      const val = parseAndEval(expr);
+      if (isFinite(val)) setResult(formatNum(val));
+      else setResult(String(val));
+    } catch {
+      // Don't show errors during live typing
+    }
+  }
+
+  function calculate() {
+    if (!expr) return;
+    const displayExpr = expr;
+    try {
+      const val = parseAndEval(expr);
+      const formatted = formatNum(val);
+      lastAnswer = val;
+      setResult(formatted);
+      addHistory(displayExpr, formatted);
+      // Put result back into expr for chaining
+      setExpr(formatted);
+    } catch (err) {
+      setResult(err.message || '计算错误', true);
+    }
+  }
+
+  function addHistory(e, r) {
+    history.unshift({ expr: e, result: r });
+    if (history.length > 20) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!history.length) {
+      list.innerHTML = '<div class="history-empty">暂无记录</div>';
+      return;
+    }
+    list.innerHTML = history.map((item, i) => `
+      <div class="history-item" onclick="useHistory(${i})">
+        <span class="h-expr" title="${escHtml(item.expr)}">${escHtml(item.expr)}</span>
+        <span class="h-result">= ${escHtml(item.result)}</span>
+      </div>
+    `).join('');
+  }
+
+  function useHistory(i) {
+    const item = history[i];
+    setExpr(item.result);
+    setResult(item.result);
+    lastAnswer = parseFloat(item.result);
+  }
+
+  function clearHistory() {
+    history = [];
+    renderHistory();
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k >= '0' && k <= '9') { inputChar(k); return; }
+    if (k === '.') { inputChar('.'); return; }
+    if (k === '+') { inputFn('+'); return; }
+    if (k === '-') { inputFn('-'); return; }
+    if (k === '*') { inputFn('*'); return; }
+    if (k === '/') { e.preventDefault(); inputFn('/'); return; }
+    if (k === '%') { inputFn(' mod '); return; }
+    if (k === '^') { inputFn('^'); return; }
+    if (k === '(') { inputFn('('); return; }
+    if (k === ')') { inputFn(')'); return; }
+    if (k === '!' ) { inputFn('!'); return; }
+    if (k === 'Enter' || k === '=') { e.preventDefault(); calculate(); return; }
+    if (k === 'Backspace') { delChar(); return; }
+    if (k === 'Escape') { clearAll(); return; }
+  });
+</script>
+</body>
+</html>
