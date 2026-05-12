@@ -308,7 +308,7 @@
   let expr = '';
   let lastAnswer = null;
   let isDeg = true;
-  let history = [];
+  let calcHistory = [];
 
   function setMode(m) {
     isDeg = m === 'deg';
@@ -472,18 +472,18 @@
   }
 
   function addHistory(e, r) {
-    history.unshift({ expr: e, result: r });
-    if (history.length > 20) history.pop();
+    calcHistory.unshift({ expr: e, result: r });
+    if (calcHistory.length > 20) calcHistory.pop();
     renderHistory();
   }
 
   function renderHistory() {
     const list = document.getElementById('historyList');
-    if (!history.length) {
+    if (!calcHistory.length) {
       list.innerHTML = '<div class="history-empty">暂无记录</div>';
       return;
     }
-    list.innerHTML = history.map((item, i) => `
+    list.innerHTML = calcHistory.map((item, i) => `
       <div class="history-item" onclick="useHistory(${i})">
         <span class="h-expr" title="${escHtml(item.expr)}">${escHtml(item.expr)}</span>
         <span class="h-result">= ${escHtml(item.result)}</span>
@@ -492,14 +492,14 @@
   }
 
   function useHistory(i) {
-    const item = history[i];
+    const item = calcHistory[i];
     setExpr(item.result);
     setResult(item.result);
     lastAnswer = parseFloat(item.result);
   }
 
   function clearHistory() {
-    history = [];
+    calcHistory = [];
     renderHistory();
   }
 
