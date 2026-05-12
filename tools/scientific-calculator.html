@@ -391,9 +391,9 @@
         .replace(/\bsin\(/g, 'Math.sin(__toRad(')
         .replace(/\bcos\(/g, 'Math.cos(__toRad(')
         .replace(/\btan\(/g, 'Math.tan(__toRad(')
-        .replace(/\basin\(/g, '(__toDeg(Math.asin(')
-        .replace(/\bacos\(/g, '(__toDeg(Math.acos(')
-        .replace(/\batan\(/g, '(__toDeg(Math.atan(');
+        .replace(/\basin\(/g, '__toDeg(Math.asin(')
+        .replace(/\bacos\(/g, '__toDeg(Math.acos(')
+        .replace(/\batan\(/g, '__toDeg(Math.atan(');
       // close extra parens for deg-wrapped functions
       s = s
         .replace(/Math\.sin\(__toRad\(([^)]*)\)/g, m => m + ')')
